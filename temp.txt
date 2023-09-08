@@ -1,0 +1,14 @@
+Abundances (Normalized): F1: 126, Sample:skip
+Abundances (Normalized): F1: 127N, Sample:DMSO 1
+Abundances (Normalized): F1: 127C, Sample:DSMO 2
+Abundances (Normalized): F1: 128N, Sample:DSMO 3
+Abundances (Normalized): F1: 128C, Sample:CCCP 1
+Abundances (Normalized): F1: 129N, Sample:CCCP 2
+Abundances (Normalized): F1: 129C, Sample:CCCP 3
+Abundances (Normalized): F1: 130N, Sample:MG132 1
+Abundances (Normalized): F1: 130C, Sample:MG132 2
+Abundances (Normalized): F1: 131N, Sample:MG132 3
+Abundances (Normalized): F1: 131C, Sample:CCCP+MG 1
+Abundances (Normalized): F1: 132N, Sample:CCCP+MG 2
+Abundances (Normalized): F1: 132C, Sample:CCCP+MG 3
+Abundances (Normalized): F1: 134N, Sample:skip
