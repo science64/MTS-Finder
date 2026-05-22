@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 
 def mtsFinderEngine(peptides, conditions, pairs, normalization):
 
-    if normalization: #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
+    if normalization == 'True': #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
         channels = [col for col in peptides.columns if 'Abundances (Normalized)' in col]
         if channels == []:
             channels = [col for col in peptides.columns if 'Abundances Normalized' in col]
@@ -41,7 +41,7 @@ def mtsFinderEngine(peptides, conditions, pairs, normalization):
     conditions = [i.lstrip() for i in conditions]
 
     # to use it second time, because we are dropping columns and second time we are getting column names again after drop
-    if normalization: #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
+    if normalization == 'True': #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
         channels = [col for col in peptides.columns if 'Abundances (Normalized)' in col]
         if channels == []:
             channels = [col for col in peptides.columns if 'Abundances Normalized' in col]
@@ -108,17 +108,19 @@ def MTS_finder(data, channels, conditions, pairs):
                     if cache != None:
                         for i in range(0, len(channels)):
                             cache[f'{columns[i + 8]}'] = data[channels[i]][num]
+                        # out_df = out_df.append(cache, ignore_index=True)
+                        out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
 
-                    # out_df = out_df.append(cache, ignore_index=True)
-                    out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
+                    cache = targetP(accesion, accesionFinal, modification, MTS_targetP)
 
                     if cache != None:
                         for i in range(0, len(channels)):
                             cache[f'{columns[i + 8]}'] = data[channels[i]][num]
+                        # out_df = out_df.append(cache, ignore_index=True)
+                        out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
 
-                    cache = targetP(accesion, accesionFinal, modification, MTS_targetP)
-                    # out_df = out_df.append(cache, ignore_index=True)
-                    out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
+            num += 1
+            continue
 
         try:
             accesionFinal = accesion.split(' [')[0].split('-')[0]
@@ -132,17 +134,16 @@ def MTS_finder(data, channels, conditions, pairs):
             if cache != None:
                 for i in range(0, len(channels)):
                     cache[f'{columns[i+8]}'] = data[channels[i]][num]
+                # out_df = out_df.append(cache, ignore_index=True)
+                out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
 
-            # out_df = out_df.append(cache, ignore_index=True)
-            out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
             cache = targetP(accesion, accesionFinal, modification, MTS_targetP)
 
             if cache != None:
                 for i in range(0, len(channels)):
                     cache[f'{columns[i+8]}'] = data[channels[i]][num]
-
-            # out_df = out_df.append(cache, ignore_index=True)
-            out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
+                # out_df = out_df.append(cache, ignore_index=True)
+                out_df = pd.concat([out_df, pd.DataFrame([cache])], ignore_index=True)
 
         num += 1
     return out_df
@@ -163,10 +164,16 @@ def uniprot(accesionwLocation, accesionFinal, modification, MTS_uniprot):
         else:
             j += 1
 
-    entryNumber = int(entryNumberList_uniprot[j-1])
+    if j >= len(entrylist_uniprot):  # accession not found in uniprot MTS list
+        return None
+
+    entryNumber = int(entryNumberList_uniprot[j])
 
     # locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
-    locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+    try:
+        locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+    except (IndexError, ValueError):
+        return None
 
     if locationFirst <= entryNumber:
         try:
@@ -221,10 +228,16 @@ def targetP(accesionwLocation, accesionFinal, modification, MTS_targetP):
         else:
             j += 1
 
-    entryNumber = int(entryNumberList_targetP[j-1])
+    if j >= len(entrylist_targetP):  # accession not found in targetP MTS list
+        return None
+
+    entryNumber = int(entryNumberList_targetP[j])
 
     # locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
-    locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+    try:
+        locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+    except (IndexError, ValueError):
+        return None
 
     if locationFirst <= entryNumber:
         try:
@@ -286,14 +299,24 @@ def calculations(result, conditions, pairs):
                 list2.append(result.iloc[:, i][num]) # to get all KO numbers in list
 
 
-            result.loc[num, f'Log2({pair[0]}/{pair[1]})'] = math.log(float(statistics.mean(list2)) / float(statistics.mean(list1)), 2)
+            try:
+                result.loc[num, f'Log2({pair[0]}/{pair[1]})'] = math.log(float(statistics.mean(list2)) / float(statistics.mean(list1)), 2)
+            except (ValueError, ZeroDivisionError):
+                result.loc[num, f'Log2({pair[0]}/{pair[1]})'] = float('nan')
 
             if testType == 'unpaired':
-                result.loc[num, f'pvalue({pair[0]}/{pair[1]})'] = float(stats.ttest_ind(list2, list1, equal_var=True)[1])
-                result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = -math.log(float(stats.ttest_ind(list2, list1, equal_var=True)[1]),
-                                                                      10)
+                try:
+                    pval = float(stats.ttest_ind(list2, list1, equal_var=True)[1])
+                    result.loc[num, f'pvalue({pair[0]}/{pair[1]})'] = pval
+                    result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = -math.log(pval, 10)
+                except (ValueError, ZeroDivisionError):
+                    result.loc[num, f'pvalue({pair[0]}/{pair[1]})'] = float('nan')
+                    result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = float('nan')
             else:
-                result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = -math.log(float(stats.ttest_rel(list2, list1)[1]), 10)
+                try:
+                    result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = -math.log(float(stats.ttest_rel(list2, list1)[1]), 10)
+                except (ValueError, ZeroDivisionError):
+                    result.loc[num, f'-Log10 pvalue({pair[0]}/{pair[1]})'] = float('nan')
 
             num += 1
 
