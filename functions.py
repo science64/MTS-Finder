@@ -169,13 +169,14 @@ def uniprot(accesionwLocation, accesionFinal, modification, MTS_uniprot):
 
     entryNumber = int(entryNumberList_uniprot[j])
 
-    # locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
+    # The peptide must lie within the presequence (MTS), i.e. its last residue
+    # must end at or before the cleavage site (entryNumber).
     try:
-        locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+        locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
     except (IndexError, ValueError):
         return None
 
-    if locationFirst <= entryNumber:
+    if locationLast <= entryNumber:
         try:
             url = f'https://www.ebi.ac.uk/proteins/api/proteins/{accesionFinal}'
             req = requests.get(url)
@@ -233,13 +234,14 @@ def targetP(accesionwLocation, accesionFinal, modification, MTS_targetP):
 
     entryNumber = int(entryNumberList_targetP[j])
 
-    # locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
+    # The peptide must lie within the presequence (MTS), i.e. its last residue
+    # must end at or before the cleavage site (entryNumber).
     try:
-        locationFirst = int(accesionwLocation.split('[')[1].split('-')[0])
+        locationLast = int(accesionwLocation.split('[')[1].split('-')[1].split(']')[0])
     except (IndexError, ValueError):
         return None
 
-    if locationFirst <= entryNumber:
+    if locationLast <= entryNumber:
         try:
             url = f'https://www.ebi.ac.uk/proteins/api/proteins/{accesionFinal}'
             req = requests.get(url)

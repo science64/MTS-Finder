@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 from tkinter import *
 from tkinter.font import Font
@@ -112,36 +113,36 @@ class MyWindow():
         os.startfile(f'{self.outputLocationPath}/{self.outputLocation.strip()}.xlsx')
 
     def browse(self):
-
-        self.filename = filedialog.askopenfile(parent=self.frame, mode='rb', title='Choose a peptide file')
-        self.filenamePretify = str(self.filename).split('/')[-1].split("'>")[0]
-        if self.filenamePretify == "None":
+        path = filedialog.askopenfilename(title='Choose a peptide file',
+                                          initialdir=os.path.expanduser('~'))
+        if not path:
             self.Message('Error!', 'Please choose a file!')
             return 0
+        self.filenamePretify = os.path.basename(path)
+        self.outputLocationPath = os.path.dirname(path) + '/'
         self.update_status_box(f'\n "{self.filenamePretify}" file is chosen! \n')
 
-        self.outputLocationPath =  str(self.filename).split("'")[1].replace(str(self.filename).split("'")[1].split("/")[-1],'')
-
-        # self.outputLocationPretify = str(self.outputLocation).split('/')[-1].split("'>")[0]
     def browse_condition(self):
-        self.filename_condition = filedialog.askopenfile(parent=self.frame, mode='rb', title='Please, choose a condition text file.')
-        self.filenamePretify_condition = str(self.filename_condition).split('/')[-1].split("'>")[0]
-        if self.filenamePretify_condition == "None":
+        initial = getattr(self, 'outputLocationPath', os.path.expanduser('~'))
+        path = filedialog.askopenfilename(title='Please, choose a condition text file.',
+                                          initialdir=initial)
+        if not path:
             self.Message('Error!', 'Please choose a file!')
             return 0
-        self.outputLocationPath_condition =  str(self.filename_condition).split("'")[1].replace(str(self.filename_condition).split("'")[1].split("/")[-1],'')
-        condtionsFromText = str(open(self.outputLocationPath_condition+self.filenamePretify_condition).read()).strip()
+        with open(path) as f:
+            condtionsFromText = f.read().strip()
         self.conditionbox.delete('1.0', END)
         self.conditionbox.insert(END, condtionsFromText)
 
     def browse_pairs(self):
-        self.filename_pairs = filedialog.askopenfile(parent=self.frame, mode='rb', title='Please, choose a pairs text file.')
-        self.filenamePretify_pairs = str(self.filename_pairs).split('/')[-1].split("'>")[0]
-        if self.filenamePretify_pairs == "None":
+        initial = getattr(self, 'outputLocationPath', os.path.expanduser('~'))
+        path = filedialog.askopenfilename(title='Please, choose a pairs text file.',
+                                          initialdir=initial)
+        if not path:
             self.Message('Error!', 'Please choose a file!')
             return 0
-        self.outputLocationPath_pairs =  str(self.filename_pairs).split("'")[1].replace(str(self.filename_pairs).split("'")[1].split("/")[-1],'')
-        pairsFromText = str(open(self.outputLocationPath_pairs+self.filenamePretify_pairs).read()).strip()
+        with open(path) as f:
+            pairsFromText = f.read().strip()
         self.pairsbox.delete('1.0', END)
         self.pairsbox.insert(END, pairsFromText)
 
@@ -228,7 +229,7 @@ if __name__ == '__main__':
 
     root = Tk()
 
-    root.title("MTS Finder App v3.5 by S. Bozkurt @2023")
+    root.title("MTS Finder App v3.6 by S. Bozkurt @2026")
     root.geometry("840x560")
     root.resizable(0, 0)
 
