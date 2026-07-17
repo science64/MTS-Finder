@@ -1,0 +1,15 @@
+# MTS-Finder runtime dependencies
+#   pip install -r requirements.txt
+#
+# Verified with Python 3.12.6 / pandas 2.2.1, scipy 1.12.0, requests 2.31.0,
+# openpyxl 3.1.2. The lower bounds below are the oldest releases the code is
+# written against; newer versions are expected to work.
+#
+# tkinter powers the GUI but ships with the Python standard library and cannot
+# be installed from PyPI. It is bundled with the python.org installers on
+# Windows and macOS; on Debian/Ubuntu run:  sudo apt install python3-tk
+
+pandas>=1.5
+scipy>=1.7
+requests>=2.25
+openpyxl>=3.0

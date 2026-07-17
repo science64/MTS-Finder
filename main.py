@@ -200,7 +200,13 @@ class MyWindow():
 
         normalization = self.varDecision.get()
 
-        self.data = mtsFinderEngine(self.fileRead, conditionsFinal, pairsFinal, normalization)
+        try:
+            self.data = mtsFinderEngine(self.fileRead, conditionsFinal, pairsFinal, normalization)
+        except Exception as e:
+            self.update_status_box(f'\n Error is "{e}"! \n')
+            self.Message('Error!', f'{e}')
+            self.runbutton.configure(state='normal')
+            return 0
         # self.data['Accession'] = self.data.index
         # self.data['Gene Symbol'] = ''
 
@@ -229,7 +235,7 @@ if __name__ == '__main__':
 
     root = Tk()
 
-    root.title("MTS Finder App v3.6 by S. Bozkurt @2026")
+    root.title("MTS Finder App v3.7 by S. Bozkurt @2026")
     root.geometry("840x560")
     root.resizable(0, 0)
 

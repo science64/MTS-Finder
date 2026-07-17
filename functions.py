@@ -12,16 +12,50 @@ import pandas as pd
 import statistics
 warnings.filterwarnings("ignore")
 
+# Proteome Discoverer columns that hold an abundance but are not a TMT channel
+DERIVED = ('Ratio', 'Count', 'Grouped', 'Scaled', 'CV')
+
+def findChannels(peptides, normalization):
+    # Supported header styles, normalized / non-normalized:
+    #   Abundances (Normalized): F1: 126, Sample   /  Abundance: F1: 126, Sample
+    #   Abundances Normalized F1 126 Sample        /  Abundance F1 126 Sample
+    #   Abundances_Normalized_126                  /  Abundance_126
+    if normalization == 'True':
+        channels = [col for col in peptides.columns if 'Abundances (Normalized)' in str(col)]
+        if channels == []:
+            channels = [col for col in peptides.columns if 'Abundances Normalized' in str(col)]
+        if channels == []:
+            channels = [col for col in peptides.columns if 'Abundances_Normalized' in str(col)]
+    else:
+        # 'Abundance:' and 'Abundance_' both exclude the normalized columns, which
+        # start with 'Abundances'. The bare 'Abundance' fallback does not, so the
+        # normalized ones are filtered out explicitly.
+        channels = [col for col in peptides.columns if 'Abundance:' in str(col)]
+        if channels == []:
+            channels = [col for col in peptides.columns if 'Abundance_' in str(col)]
+        if channels == []:
+            # Last resort for bare 'Abundance F1 126 Sample' headers. Derived columns
+            # (Abundance Ratio, Abundances Count, ...) are not channels.
+            channels = [col for col in peptides.columns
+                        if 'Abundance' in str(col)
+                        and 'Normalized' not in str(col)
+                        and not any(word in str(col) for word in DERIVED)]
+
+    if channels == []:
+        wanted = 'normalized' if normalization == 'True' else 'non-normalized'
+        seen = [str(col) for col in peptides.columns if 'Abundance' in str(col)]
+        raise ValueError(f'No {wanted} abundance channel found in the file. '
+                         f'Columns holding an abundance: {seen if seen else "none"}')
+
+    return channels
+
 def mtsFinderEngine(peptides, conditions, pairs, normalization):
 
-    if normalization == 'True': #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
-        channels = [col for col in peptides.columns if 'Abundances (Normalized)' in col]
-        if channels == []:
-            channels = [col for col in peptides.columns if 'Abundances Normalized' in col]
-    else:
-        channels = [col for col in peptides.columns if 'Abundance:' in col]
-        if channels == []:
-            channels = [col for col in peptides.columns if 'Abundance' in col]
+    channels = findChannels(peptides, normalization)
+
+    if len(channels) != len(conditions):
+        raise ValueError(f'{len(channels)} abundance channel(s) found but {len(conditions)} condition(s) given. '
+                         f'Channels: {[str(col) for col in channels]}')
 
     s = 0
     for condition in conditions: # to remove abundances to skip (empty channels)
@@ -41,27 +75,23 @@ def mtsFinderEngine(peptides, conditions, pairs, normalization):
     conditions = [i.lstrip() for i in conditions]
 
     # to use it second time, because we are dropping columns and second time we are getting column names again after drop
-    if normalization == 'True': #Abundances Normalized F1 126 Sample Baseline #Abundance F1 126 Sample Baseline
-        channels = [col for col in peptides.columns if 'Abundances (Normalized)' in col]
-        if channels == []:
-            channels = [col for col in peptides.columns if 'Abundances Normalized' in col]
-    else:
-        channels = [col for col in peptides.columns if 'Abundance:' in col]
-        if channels == []:
-            channels = [col for col in peptides.columns if 'Abundance' in col]
+    channels = findChannels(peptides, normalization)
 
-    columnDict = {channels[i]: conditions[i] for i in range(len(channels))}
+    # so that the reader of the excel file can tell which abundances were used
+    suffix = ' (Normalized)' if normalization == 'True' else ''
+
+    columnDict = {channels[i]: conditions[i] + suffix for i in range(len(channels))}
     print(columnDict)
-    result = MTS_finder(peptides, channels, conditions, pairs)
+    result = MTS_finder(peptides, channels, pairs)
 
     result = result.rename(columns=columnDict)
 
     if pairs[0] != ['']:
-        result = calculations(result, conditions, pairs)
+        result = calculations(result, pairs, suffix)
 
     return result
 
-def MTS_finder(data, channels, conditions, pairs):
+def MTS_finder(data, channels, pairs):
 
     columns = ["Accession", "Gene Symbol", "Positions in Master Proteins", "Modifications", "Uniprot", "Uniprot Location",
                "TargetP", "TargetP Location"]
@@ -278,16 +308,18 @@ def targetP(accesionwLocation, accesionFinal, modification, MTS_targetP):
 
         return cache
 
-def calculations(result, conditions, pairs):
-    # ['WT', 'WT', 'WT', 'WT', 'KO', 'KO', 'KO', 'KO']
+def calculations(result, pairs, suffix=''):
+    # the condition labels are the column names here (renamed in mtsFinderEngine), so a
+    # pair's replicates are every column carrying that label: ['WT', 'WT', 'KO', 'KO']
     # KO/WT list2/list1
     testType = 'unpaired' # for only supports unpaired t test
     allAccessions = result['Accession']
 
     for pair in pairs:
 
-        second = [i for i, x in enumerate(result.columns) if x == pair[0]] # KO list2
-        first = [i for i, x in enumerate(result.columns) if x == pair[1]]  # WT list1
+        # the suffix is only on the condition columns, the ratio names stay clean
+        second = [i for i, x in enumerate(result.columns) if x == pair[0] + suffix] # KO list2
+        first = [i for i, x in enumerate(result.columns) if x == pair[1] + suffix]  # WT list1
 
         num = 0
 

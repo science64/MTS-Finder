@@ -2,7 +2,7 @@
 
 **MTS-Finder** is a desktop application for discovering **mitochondrial targeting sequences (MTS / presequences)** in peptide-level shotgun (bottom-up) proteomics data. It cross-references identified peptides against curated Uniprot presequence annotations and TargetP-2.0 cleavage-site predictions, flags peptides that fall within a mitochondrial presequence, fetches gene symbols from Uniprot, and computes quantitative comparisons between experimental conditions.
 
-**Current version: v3.6 (2026)** — see [CHANGELOG.md](CHANGELOG.md) for the full release history. v3.6 is the first fully working release; the original v3.4 (2023) was non-functional.
+**Current version: v3.7 (2026)** — see [CHANGELOG.md](CHANGELOG.md) for the full release history. v3.6 was the first fully working release; the original v3.4 (2023) was non-functional.
 
 ---
 
@@ -14,7 +14,7 @@
 - **Cleavage-site aware filtering** — a peptide is reported only when it lies *within* the presequence, i.e. its last residue ends at or before the predicted/annotated cleavage site.
 - **Automatic gene-symbol lookup** — resolves accessions to gene symbols via the [EBI Proteins API](https://www.ebi.ac.uk/proteins/api/doc/), with a retry and a graceful fallback to the accession ID when offline.
 - **Flexible input** — reads Proteome Discoverer–style peptide exports as either Excel (`.xlsx`) or tab-delimited text (`.txt`).
-- **Normalized or raw abundances** — pick "Abundances (Normalized)" or raw "Abundance" channels with a single toggle.
+- **Normalized or raw abundances** — pick normalized or raw channels with a single toggle. Three header styles are recognised, and the two groups are never mixed up even when both are present in the file. A normalized run labels its condition columns `WT (Normalized)`, so the output states which abundances it was built from.
 - **Channel-to-condition mapping** — a simple comma-separated list assigns each abundance channel to an experimental condition; `skip` and `Boost` channels are dropped automatically.
 - **Built-in quantification** — for each requested comparison pair it computes:
   - `Log2(ratio)` of the group means
@@ -28,20 +28,14 @@
 
 ## Requirements
 
-- **Python 3.8+**
-- Python packages:
+- **Python 3.8+** (developed and verified on 3.12)
+- Python packages — all listed in [requirements.txt](requirements.txt):
   - `pandas`
   - `scipy`
   - `requests`
   - `openpyxl` (Excel read/write)
-  - `tkinter` (ships with most Python installations; on Linux install `python3-tk`)
+- `tkinter` — powers the GUI, but it ships with the Python standard library rather than PyPI, so it is *not* in `requirements.txt`. It is included with the python.org installers on Windows and macOS; on Debian/Ubuntu run `sudo apt install python3-tk`.
 - Internet access (optional but recommended) for gene-symbol lookups via the EBI Proteins API.
-
-Install the dependencies:
-
-```bash
-pip install pandas scipy requests openpyxl
-```
 
 ---
 
@@ -50,7 +44,27 @@ pip install pandas scipy requests openpyxl
 ```bash
 git clone https://github.com/science64/MTS-Finder.git
 cd MTS-Finder
-pip install pandas scipy requests openpyxl
+pip install -r requirements.txt
+```
+
+Using a virtual environment keeps these packages isolated from your system Python:
+
+```bash
+python -m venv .venv
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Verify the install:
+
+```bash
+python -c "import pandas, scipy, requests, openpyxl, tkinter; print('All dependencies OK')"
 ```
 
 Make sure the `files/` folder (shipped with the repository) stays next to `main.py` — it contains the reference databases and the application icon that the tool loads at runtime.
@@ -100,7 +114,7 @@ KO/WT
 Multiple comparisons:
 
 ```
-KO/WT; Rotenone/0DMSO; Antimycin/0DMSO
+KO/WT; Rotenone/DMSO; Antimycin/DMSO
 ```
 
 ### Expected input columns
@@ -109,7 +123,15 @@ The peptide file should contain the typical Proteome Discoverer peptide-export c
 
 - `Positions in Master Proteins` (e.g. `P49189 [275-293]`, or multiple `; `-separated accessions)
 - `Modifications`
-- Abundance channels — either `Abundances (Normalized)...` / `Abundances Normalized...` or `Abundance: ...` / `Abundance...`
+- Abundance channels, in any one of these three header styles:
+
+| Style | Non-Normalized | Normalized |
+| --- | --- | --- |
+| Proteome Discoverer | `Abundance: F1: 126, Sample` | `Abundances (Normalized): F1: 126, Sample` |
+| Spaced | `Abundance F1 126 Sample` | `Abundances Normalized F1 126 Sample` |
+| Underscore | `Abundance_126` | `Abundances_Normalized_126` |
+
+A file may contain both groups at once; the toggle selects one group and never mixes the two. Derived Proteome Discoverer columns (`Abundance Ratio`, `Abundances Count`, `Grouped`, `Scaled`, `CV`) are ignored — they are not channels. If no channel matching your toggle exists, or the number of channels does not match the number of conditions, the run stops with a message naming the columns it found instead of failing obscurely.
 
 ### Output columns
 
@@ -121,7 +143,7 @@ The peptide file should contain the typical Proteome Discoverer peptide-export c
 | `Modifications` | Peptide modifications |
 | `Uniprot` / `Uniprot Location` | Whether matched via Uniprot annotation, and the cleavage-site position |
 | `TargetP` / `TargetP Location` | Whether matched via TargetP-2.0 prediction, and the cleavage-site position |
-| *(condition channels)* | Abundance values, renamed to your condition labels |
+| *(condition channels)* | Abundance values, renamed to your condition labels. On a **Normalized** run the labels carry a `(Normalized)` suffix — e.g. `WT (Normalized)` — so the workbook records which abundances were used. Ratio column names are unaffected. |
 | `Log2(num/den)` | Log2 ratio of group means, per pair |
 | `pvalue(num/den)` | Unpaired two-sample *t*-test p-value, per pair |
 | `-Log10 pvalue(num/den)` | −log10 of the p-value, per pair |
@@ -147,6 +169,7 @@ MTS-Finder/
 ├── functions.py     # MTS-finding engine, Uniprot/TargetP matching, statistics
 ├── condtions.txt    # Default conditions line
 ├── pairs.txt        # Default comparison pairs
+├── requirements.txt # Python dependencies
 ├── files/           # Reference databases and icon
 ├── CHANGELOG.md
 ├── LICENSE

@@ -2,6 +2,49 @@
 
 All notable changes to **MTS-Finder** are documented in this file.
 
+## [3.7] - 2026-07-16
+
+Abundance-channel detection rewritten so that the underscore header style
+(`Abundance_126` / `Abundances_Normalized_126`) is supported and the normalized
+and non-normalized groups can no longer be confused with one another. A
+normalized run now says so in the output workbook. Adds `requirements.txt`.
+
+### Added (`functions.py`) especially important for MassCore output
+- **Underscore abundance headers supported.** Files written with
+  `Abundance_126` / `Abundances_Normalized_126` style columns matched none of
+  the known patterns. On a normalized run no channel was found at all; on a
+  non-normalized run the bare `'Abundance'` fallback matched the raw *and* the
+  normalized columns (28 instead of 14) and the run died with an `IndexError`.
+  Channel detection now lives in one `findChannels()` helper covering all three
+  header styles, and the two selections can no longer overlap.
+- **Normalization recorded in the output.** When *Normalized values* is
+  selected the condition columns are written as `WT (Normalized)`, so the
+  Excel file states which abundances it was built from. Ratio names
+  (`Log2(KO/WT)`) are unchanged; non-normalized output is unchanged.
+
+### Fixed (`functions.py`, `main.py`)
+- **Derived columns mistaken for channels.** The last-resort `'Abundance'`
+  match also picked up Proteome Discoverer's `Abundance Ratio`,
+  `Abundances Count`, `Grouped`, `Scaled` and `CV` columns. These are now
+  excluded, so bare `Abundance F1 126 Sample` headers resolve to real channels
+  only.
+- **Silent/cryptic failures.** A missing channel group, or a condition count
+  that does not match the channel count, now raises a `ValueError` naming the
+  columns it did find, and `main.py` shows it in a dialog and re-enables the
+  RUN button instead of letting the worker thread die unnoticed.
+
+### Added (project)
+- **`requirements.txt`.** The four third-party dependencies (`pandas`, `scipy`,
+  `requests`, `openpyxl`) are now declared in one place and installable with
+  `pip install -r requirements.txt`. `tkinter` is deliberately excluded — it is
+  part of the standard library and is not available from PyPI.
+
+### Changed (project)
+- Bumped the window title to `MTS Finder App v3.7 by S. Bozkurt @2026`.
+- README: install steps now use `requirements.txt` (with virtual-environment
+  and verification commands), the three supported abundance header styles are
+  documented in a table, and the `(Normalized)` output suffix is described.
+
 ## [3.6] - 2026-06-02
 
 This is the first release that runs end-to-end correctly. It combines the
